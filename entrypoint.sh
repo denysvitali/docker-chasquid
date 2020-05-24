@@ -33,6 +33,14 @@ mkdir -p "$(dirname "$CHASQUID_CONFIG_FILE")/domains/${CSQ_HOSTNAME}"
 IFS=',' read -r -a CSQ_DOMAINS_ENTRIES <<< "$CSQ_DOMAINS"
 for domain in "${CSQ_DOMAINS_ENTRIES[@]}"; do
   mkdir -p "$(dirname "$CHASQUID_CONFIG_FILE")/domains/${domain}"
+  mkdir -p "$(dirname "$CHASQUID_CONFIG_FILE")/certs/${domain}"
+
+  if [ ! -f "$(dirname "$CHASQUID_CONFIG_FILE")/certs/${domain}/private.pem" ]; then
+    pushd "$(dirname "$CHASQUID_CONFIG_FILE")/certs/${domain}/"
+    echo "Generating DKIM key for ${domain}..."
+    dkimkeygen
+    popd
+  fi
 done
 
 touch "$CHASQUID_CONFIG_FILE"
