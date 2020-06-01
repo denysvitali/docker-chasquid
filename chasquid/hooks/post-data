@@ -14,6 +14,7 @@
 
 set -e
 
+source /vars.sh
 
 # Note greylistd needs you to add the user to the "greylist" group:
 #   usermod -a -G greylist mail
@@ -30,7 +31,7 @@ then
 fi
 
 
-TF="$(mktemp --tmpdir post-data-XXXXXXXXXX)"
+TF="$(mktemp /tmp/post-data-XXXXXXXXXX)"
 trap 'rm "$TF"' EXIT
 
 # Save the message to the temporary file, so we can pass it on to the various
@@ -77,16 +78,27 @@ fi
 #  - User has authenticated.
 #  - dkimsign binary exists.
 #  - domains/$DOMAIN/dkim_selector file exists.
-#  - certs/$DOMAIN/dkim_privkey.pem file exists.
+#  - certs/$DOMAIN/private.pem file exists.
 #
 # Note this has not been thoroughly tested, so might need further adjustments.
-if [ "$AUTH_AS" != "" ] && command -v dkimsign; then
+if [ "$AUTH_AS" != "" ] && command -v dkimsign > /dev/null; then
 	DOMAIN=$( echo "$MAIL_FROM" | cut -d '@' -f 2 )
 	if [ -f "domains/$DOMAIN/dkim_selector" ] \
-			&& [ -f "certs/$DOMAIN/dkim_privkey.pem" ]; then
-		dkimsign -n -hd \
-			-key "certs/$DOMAIN/dkim_privkey.pem" \
+			&& [ -f "certs/$DOMAIN/private.pem" ]; then
+		dkimsign -a "$DKIM_ALGORITHM" \
+      -n -hd \
+			-key "certs/$DOMAIN/private.pem" \
 			-s "$(cat "domains/$DOMAIN/dkim_selector")" \
+			-d "$DOMAIN" \
+			< "$TF"
+	fi
+
+	if [ -f "domains/$DOMAIN/dkim_selector_second" ] \
+			&& [ -f "certs/$DOMAIN/private-second.pem" ]; then
+		dkimsign -a "$DKIM_SECOND_ALGORITHM" \
+      -n -hd \
+			-key "certs/$DOMAIN/private-second.pem" \
+			-s "$(cat "domains/$DOMAIN/dkim_selector_second")" \
 			-d "$DOMAIN" \
 			< "$TF"
 	fi

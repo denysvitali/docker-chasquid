@@ -1,44 +1,45 @@
 #!/bin/bash
 set -e
+source ./vars.sh
 
-CHASQUID_CONFIG_FILE=${CHASQUID_CONFIG_FILE:-"/etc/chasquid/chasquid.conf"}
+mkdir -p "$CHASQUID_CONFIG_DIR/certs"
+mkdir -p "$CHASQUID_CONFIG_DIR/domains/${CSQ_HOSTNAME}"
 
-CSQ_HOSTNAME=${CSQ_HOSTNAME:-"localhost"}
-CSQ_DOMAINS=${CSQ_DOMAINS:-"localhost"} # Multiple values, comma separated
-CSQ_MAX_DATA_SIZE_MB=${CSQ_MAX_DATA_SIZE_MB:-50}
-CSQ_SMTP_ADDRESS=${CSQ_SMTP_ADDRESS:-0.0.0.0:25} # Multiple values, comma separated
-CSQ_SUBMISSION_ADDRESS=${CSQ_SUBMISSION_ADDRESS:-0.0.0.0:587} # Multiple values, comma separated
-CSQ_SUBMISSION_TLS_ADDRESS=${CSQ_SUBMISSION_TLS_ADDRESS:-0.0.0.0:465} # Multiple values, comma separated
-CSQ_MONITORING_ADDRESS=${CSQ_MONITORING_ADDRESS:-127.0.0.1:8080}
-CSQ_MAIL_DELIVERY_AGENT_BIN=${CSQ_MAIL_DELIVERY_AGENT_BIN:-maildrop}
-CSQ_MAIL_DELIVERY_AGENT_ARGS=${CSQ_MAIL_DELIVERY_AGENT_ARGS:--f,%from%,-d,%to_user%}
-CSQ_DATA_DIR=${CSQ_DATA_DIR:-/var/lib/chasquid}
-CSQ_SUFFIX_SEPARATORS=${CSQ_SUFFIX_SEPARATORS:-+}
-CSQ_DROP_CHARACTERS=${CSQ_DROP_CHARACTERS:-.}
-CSQ_MAIL_LOG_PATH=${CSQ_MAIL_LOG_PATH:-<stdout>}
-CSQ_DOVECOT_AUTH=${CSQ_DOVECOT_AUTH:-false}
-CSQ_ARGS=${CSQ_ARGS:-logtime}
+# Get domains from MySQL
+DOMAIN_LIST=$(echo "SELECT domain FROM domains" | mysql --user "$DOVECOT_DB_USER" -h "$DOVECOT_DB_HOST" --password="$DOVECOT_DB_PASSWORD" "$DOVECOT_DB_NAME" | tail -n +2 | xargs)
 
+echo "Domain list: $DOMAIN_LIST"
 
-# Dovecot Vars
-DOVECOT_DB_HOST=${DOVECOT_DB_HOST:-127.0.0.1}
-DOVECOT_DB_NAME=${DOVECOT_DB_NAME:-mail}
-DOVECOT_DB_USER=${DOVECOT_DB_USER:-dovecot}
-DOVECOT_DB_PASSWORD=${DOVECOT_DB_PASSWORD:-password}
+# Create domains dirs
 
-mkdir -p "$(dirname "$CHASQUID_CONFIG_FILE")/certs"
-mkdir -p "$(dirname "$CHASQUID_CONFIG_FILE")/domains/${CSQ_HOSTNAME}"
+for domain in $DOMAIN_LIST; do
+  echo "=> $domain"
+  mkdir -p "$CHASQUID_CONFIG_DIR/domains/${domain}"
+  mkdir -p "$CHASQUID_CONFIG_DIR/certs/${domain}"
 
-# Create domains directories
-IFS=',' read -r -a CSQ_DOMAINS_ENTRIES <<< "$CSQ_DOMAINS"
-for domain in "${CSQ_DOMAINS_ENTRIES[@]}"; do
-  mkdir -p "$(dirname "$CHASQUID_CONFIG_FILE")/domains/${domain}"
-  mkdir -p "$(dirname "$CHASQUID_CONFIG_FILE")/certs/${domain}"
-
-  if [ ! -f "$(dirname "$CHASQUID_CONFIG_FILE")/certs/${domain}/private.pem" ]; then
+  if [ ! -f "$CHASQUID_CONFIG_DIR/certs/${domain}/private.pem" ]; then
     pushd "$(dirname "$CHASQUID_CONFIG_FILE")/certs/${domain}/"
     echo "Generating DKIM key for ${domain}..."
-    dkimkeygen
+    dkimkeygen -a "$DKIM_ALGORITHM" -d dns.txt -o private.pem
+    popd
+  fi
+
+  if [ ! -f "$CHASQUID_CONFIG_DIR/certs/${domain}/private-second.pem" ]; then
+    pushd "$(dirname "$CHASQUID_CONFIG_FILE")/certs/${domain}/"
+    echo "Generating secondary DKIM key ($DKIM_SECOND_ALGORITHM) for ${domain}..."
+    dkimkeygen -a "$DKIM_SECOND_ALGORITHM" -d dns-second.txt -o private-second.pem
+    popd
+  fi
+
+  if [ ! -f "$CHASQUID_CONFIG_DIR/domains/${domain}/dkim_selector" ]; then
+    pushd "$CHASQUID_CONFIG_DIR/domains/${domain}/"
+    echo "$DKIM_SELECTOR" > dkim_selector 
+    popd
+  fi
+
+  if [ ! -f "$CHASQUID_CONFIG_DIR/domains/${domain}/dkim_selector_second" ]; then
+    pushd "$CHASQUID_CONFIG_DIR/domains/${domain}/"
+    echo "$DKIM_SECOND_SELECTOR" > dkim_selector_second
     popd
   fi
 done
@@ -143,5 +144,8 @@ echo "********************"
 
 printf "%s\n%s\nchasquid -v 1 -config_dir \"%s\" %s" "#!/bin/sh" "sleep 5" "$(dirname "$CHASQUID_CONFIG_FILE")" "$CSQ_ARGS" > /usr/local/bin/chasquid.sh
 chmod 755 /usr/local/bin/chasquid.sh
+
+mkdir -p /run/clamav
+chown clamav:clamav /run/clamav
 
 supervisord -n
