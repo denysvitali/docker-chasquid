@@ -147,5 +147,5 @@ chmod 755 /usr/local/bin/chasquid.sh
 
 mkdir -p /run/clamav
 chown clamav:clamav /run/clamav
-
+freshclam -u clamav
 supervisord -n

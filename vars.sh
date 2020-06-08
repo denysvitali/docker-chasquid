@@ -16,6 +16,11 @@ export CSQ_DOVECOT_AUTH=${CSQ_DOVECOT_AUTH:-false}
 export CSQ_ARGS=${CSQ_ARGS:-logtime}
 
 
+# RSPAMD
+export RSPAMD_CONNECTION=${RSPAMD_CONNECTION:-rspamd}
+export RSPAMD_PASSWORD=${RSPAMD_CONNECTION:-change-me}
+
+
 # Dovecot Vars
 export DOVECOT_DB_HOST=${DOVECOT_DB_HOST:-127.0.0.1}
 export DOVECOT_DB_NAME=${DOVECOT_DB_NAME:-mail}

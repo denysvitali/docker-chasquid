@@ -21,7 +21,7 @@ RUN apk add --no-cache bash \
     shadow \
     dovecot-mysql \
     milter-greylist \
-    rspamd \
+    rspamd-client \
     clamav \
     clamav-db \
     clamav-libunrar \
