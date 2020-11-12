@@ -49,7 +49,10 @@ fi
 
 
 if command -v rspamc >/dev/null; then
-	ACTION=$( rspamc -h "$RSPAMD_CONNECTION" -P "$RSPAMD_PASSWORD" < "$TF" 2>/dev/null | grep Action: | cut -d " " -f 2- )
+  SPAM_RESULT=$( rspamc -h "$(cat /run/secrets/rspamd_connection)" -P "$(cat /run/secrets/rspamd_password)" < "$TF" 2>/dev/null)
+  ACTION=$( echo "$SPAM_RESULT" | grep Action: | sed 's/^.*: //')
+  SCORE=$(echo "$SPAM_RESULT" | grep Score: | sed 's/^.*: //')
+  SPAMD_SYMBOLS=$(echo "$SPAM_RESULT" | grep Symbol: | sed 's/^.*: /\t/')
 	case "$ACTION" in
 		reject)
 			echo "spam detected"
@@ -57,6 +60,8 @@ if command -v rspamc >/dev/null; then
 			;;
 	esac
 	echo "X-Spam-Action:" "$ACTION"
+  echo "X-Spam-Result: $SCORE"
+  echo "$SPAMD_SYMBOLS"
 fi
 
 

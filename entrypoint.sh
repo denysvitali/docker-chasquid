@@ -90,8 +90,8 @@ csqc_s "suffix_separators" "$CSQ_SUFFIX_SEPARATORS"
 csqc_s "drop_characters" "$CSQ_DROP_CHARACTERS"
 
 csqc_s "mail_log_path" "${CSQ_MAIL_LOG_PATH}"
-
 csqc_b "dovecot_auth" "${CSQ_DOVECOT_AUTH}"
+csqc_b "proxy_protocol" "${CSQ_PROXY_PROTOCOL}"
 
 echo "Chasquid Config:"
 cat "$CHASQUID_CONFIG_FILE"
@@ -137,6 +137,10 @@ echo "dovecot-sql.conf:"
 cat /etc/dovecot/dovecot-sql.conf
 
 
+# Compile sieves:
+sievec /etc/dovecot/sieve/
+
+
 echo "********************"
 echo "* Starting CHASQUID *"
 echo "********************"
@@ -144,6 +148,9 @@ echo "********************"
 
 printf "%s\n%s\nchasquid -v 1 -config_dir \"%s\" %s" "#!/bin/sh" "sleep 5" "$(dirname "$CHASQUID_CONFIG_FILE")" "$CSQ_ARGS" > /usr/local/bin/chasquid.sh
 chmod 755 /usr/local/bin/chasquid.sh
+
+echo -n "$RSPAMD_CONNECTION" > /run/secrets/rspamd_connection
+echo -n "$RSPAMD_PASSWORD" > /run/secrets/rspamd_password
 
 mkdir -p /run/clamav
 chown clamav:clamav /run/clamav

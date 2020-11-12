@@ -18,7 +18,7 @@ export CSQ_ARGS=${CSQ_ARGS:-logtime}
 
 # RSPAMD
 export RSPAMD_CONNECTION=${RSPAMD_CONNECTION:-rspamd}
-export RSPAMD_PASSWORD=${RSPAMD_CONNECTION:-change-me}
+export RSPAMD_PASSWORD=${RSPAMD_PASSWORD:-change-me}
 
 
 # Dovecot Vars

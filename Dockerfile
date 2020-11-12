@@ -16,10 +16,11 @@ RUN make && mv dkim* /
 
 FROM alpine:3.11
 RUN apk add --no-cache bash \
-    dovecot \
     supervisor \
     shadow \
+    dovecot \
     dovecot-mysql \
+    dovecot-pigeonhole-plugin \
     milter-greylist \
     rspamd-client \
     clamav \
@@ -42,5 +43,6 @@ COPY ./scripts/ /usr/local/bin/
 COPY ./entrypoint.sh /
 COPY supervisord.conf /etc/supervisord.conf
 COPY ./dovecot/conf.d/ /etc/dovecot/conf.d/
+COPY ./dovecot/sieve/ /etc/dovecot/sieve
 COPY ./chasquid/hooks/ /etc/chasquid/hooks
 ENTRYPOINT /entrypoint.sh
