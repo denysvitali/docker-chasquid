@@ -91,7 +91,7 @@ csqc_s "drop_characters" "$CSQ_DROP_CHARACTERS"
 
 csqc_s "mail_log_path" "${CSQ_MAIL_LOG_PATH}"
 csqc_b "dovecot_auth" "${CSQ_DOVECOT_AUTH}"
-csqc_b "proxy_protocol" "${CSQ_PROXY_PROTOCOL}"
+csqc_b "haproxy_incoming" "${CSQ_HAPROXY_INCOMING}"
 
 echo "Chasquid Config:"
 cat "$CHASQUID_CONFIG_FILE"
