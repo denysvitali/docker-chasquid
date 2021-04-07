@@ -14,7 +14,9 @@ ENV GOPATH=/go
 RUN git clone https://github.com/denysvitali/dkim .
 RUN make && mv dkim* /
 
-FROM alpine:3.11
+# --- Main Container ----
+FROM alpine:3.12
+ARG ALIAS_RESOLVE_VERSION=0.0.4
 RUN apk add --no-cache bash \
     supervisor \
     shadow \
@@ -28,7 +30,8 @@ RUN apk add --no-cache bash \
     clamav-libunrar \
     clamav-milter \
     mysql-client \
-    sudo
+    sudo \
+    wget
 COPY --from=chasquid /go/src/blitiri.com.ar/repos/chasquid/chasquid /usr/bin/chasquid
 COPY --from=dkim /dkimkeygen /usr/bin/dkimkeygen
 COPY --from=dkim /dkimsign /usr/bin/dkimsign
@@ -45,4 +48,9 @@ COPY supervisord.conf /etc/supervisord.conf
 COPY ./dovecot/conf.d/ /etc/dovecot/conf.d/
 COPY ./dovecot/sieve/ /etc/dovecot/sieve
 COPY ./chasquid/hooks/ /etc/chasquid/hooks
+RUN wget -O /usr/local/bin/chasquid-alias-resolve \
+      "https://github.com/denysvitali/chasquid-alias/releases/download/$ALIAS_RESOLVE_VERSION/alias-resolve" && \
+    chmod a+x /usr/local/bin/chasquid-alias-resolve && \
+    ln -s /usr/local/bin/chasquid-alias-resolve /etc/chasquid/hooks/alias-exists && \
+    ln -s /usr/local/bin/chasquid-alias-resolve /etc/chasquid/hooks/alias-resolve
 ENTRYPOINT /entrypoint.sh
