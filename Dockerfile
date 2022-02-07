@@ -13,10 +13,10 @@ RUN make && mv dkim* /
 
 FROM golang:alpine AS chasquid-rspamd
 RUN apk add --no-cache git
-RUN go install github.com/thor77/chasquid-rspamd@0.1.1
+RUN go install github.com/denysvitali/chasquid-rspamd/cmd/chasquid-rspamd@0.0.1
 
 # --- Main Container ----
-FROM alpine:3.12
+FROM alpine:3.15
 ARG ALIAS_RESOLVE_VERSION=0.0.4
 RUN apk add --no-cache bash \
     supervisor \
@@ -32,11 +32,12 @@ RUN apk add --no-cache bash \
     mysql-client \
     sudo \
     wget
-COPY --from=chasquid /app/chasquid /usr/bin/chasquid
+COPY --from=chasquid /app/chasquid/chasquid /usr/bin/chasquid
 COPY --from=dkim /dkimkeygen /usr/bin/dkimkeygen
 COPY --from=dkim /dkimsign /usr/bin/dkimsign
 COPY --from=dkim /dkimverify /usr/bin/dkimverify
 COPY --from=chasquid-rspamd /go/bin/chasquid-rspamd /usr/bin/chasquid-rspamd
+RUN chmod a+x /usr/bin/chasquid
 RUN adduser -D mail-server
 RUN usermod -a -G tty mail-server
 RUN adduser -D vmail

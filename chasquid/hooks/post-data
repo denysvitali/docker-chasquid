@@ -47,8 +47,15 @@ if command -v spamc >/dev/null; then
         echo "X-Spam-Score: $SL"
 fi
 
-
-if command -v rspamc >/dev/null; then
+# Use chasquid-rspamd (from https://github.com/Thor77/chasquid-rspamd) if
+# available, otherwise fall back to rspamc.
+if command -v chasquid-rspamd >/dev/null; then
+	chasquid-rspamd \
+	  -u "http://rspamd:11334" \
+	  -a "$(cat /run/secrets/rspamd_password)" \
+	  --debug \
+	  --log-file /tmp/chasquid-rspamd.txt < "$TF" 2>/dev/null
+elif command -v rspamc >/dev/null; then
   SPAM_RESULT=$( rspamc -h "$(cat /run/secrets/rspamd_connection)" -P "$(cat /run/secrets/rspamd_password)" < "$TF" 2>/dev/null)
   ACTION=$( echo "$SPAM_RESULT" | grep Action: | sed 's/^.*: //')
   SCORE=$(echo "$SPAM_RESULT" | grep Score: | sed 's/^.*: //')
