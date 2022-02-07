@@ -154,5 +154,5 @@ echo -n "$RSPAMD_PASSWORD" > /run/secrets/rspamd_password
 
 mkdir -p /run/clamav
 chown clamav:clamav /run/clamav
-freshclam -u clamav
+freshclam -u clamav &
 supervisord -n

@@ -1,18 +1,19 @@
 FROM golang:alpine AS chasquid
 RUN apk add --no-cache git wget make
-RUN mkdir -p /go/src/blitiri.com.ar/repos/chasquid
-WORKDIR /go/src/blitiri.com.ar/repos/chasquid
-ENV GOPATH=/go
-RUN git clone https://github.com/denysvitali/chasquid .
-RUN make
+WORKDIR /app
+RUN git clone https://blitiri.com.ar/repos/chasquid && \
+    cd chasquid && \
+    make
 
 FROM golang:alpine AS dkim
 RUN apk add --no-cache git wget make
-RUN mkdir -p /go/src/github.com/driusan/dkim
-WORKDIR /go/src/github.com/driusan/dkim/
-ENV GOPATH=/go
+WORKDIR /app
 RUN git clone https://github.com/denysvitali/dkim .
 RUN make && mv dkim* /
+
+FROM golang:alpine AS chasquid-rspamd
+RUN apk add --no-cache git
+RUN go install github.com/thor77/chasquid-rspamd@0.1.1
 
 # --- Main Container ----
 FROM alpine:3.12
@@ -24,7 +25,6 @@ RUN apk add --no-cache bash \
     dovecot-mysql \
     dovecot-pigeonhole-plugin \
     milter-greylist \
-    rspamd-client \
     clamav \
     clamav-db \
     clamav-libunrar \
@@ -32,10 +32,11 @@ RUN apk add --no-cache bash \
     mysql-client \
     sudo \
     wget
-COPY --from=chasquid /go/src/blitiri.com.ar/repos/chasquid/chasquid /usr/bin/chasquid
+COPY --from=chasquid /app/chasquid /usr/bin/chasquid
 COPY --from=dkim /dkimkeygen /usr/bin/dkimkeygen
 COPY --from=dkim /dkimsign /usr/bin/dkimsign
 COPY --from=dkim /dkimverify /usr/bin/dkimverify
+COPY --from=chasquid-rspamd /go/bin/chasquid-rspamd /usr/bin/chasquid-rspamd
 RUN adduser -D mail-server
 RUN usermod -a -G tty mail-server
 RUN adduser -D vmail
